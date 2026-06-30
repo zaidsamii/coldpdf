@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tool — ColdPDF</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#000;color:#fff;font-family:monospace;font-size:13px;min-height:100vh;display:flex;flex-direction:column}
+    a{color:#aaa;text-decoration:none}a:hover{color:#fff}
+    nav{border-bottom:1px solid #222;padding:10px 20px;display:flex;gap:16px;align-items:center}
+    .brand{font-weight:bold;font-size:15px;color:#fff}
+    .back{font-size:12px;color:#444}
+    main{flex:1;max-width:660px;width:100%;margin:0 auto;padding:28px 20px}
+    .tool-header{margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #111}
+    .tool-header .icon{font-size:22px;margin-bottom:6px}
+    .tool-header h1{font-size:18px;margin-bottom:3px}
+    .tool-header p{font-size:11px;color:#555}
+    .sec{display:flex;align-items:center;gap:8px;border:1px solid #111;background:#030303;padding:7px 10px;border-radius:3px;margin-bottom:18px;font-size:10px;color:#333}
+    .sec b{color:#555}
+
+    .dz{border:1px dashed #222;border-radius:3px;padding:36px 20px;text-align:center;cursor:pointer;position:relative;transition:.15s}
+    .dz:hover,.dz.over{border-color:#555;background:#080808}
+    .dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .dz-icon{font-size:26px;margin-bottom:8px}
+    .dz-title{font-size:13px;margin-bottom:3px}
+    .dz-sub{font-size:11px;color:#444}
+    .dz-hint{font-size:10px;color:#222;margin-top:6px}
+
+    #fileList{margin:10px 0}
+    .fi{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid #111;border-radius:3px;margin-bottom:4px;background:#050505}
+    .fi-name{font-size:11px}.fi-size{font-size:10px;color:#333}
+    .fi-rm{background:none;border:none;color:#333;cursor:pointer;font-size:13px}.fi-rm:hover{color:#f55}
+
+    .opts{border:1px solid #111;padding:10px;border-radius:3px;margin:12px 0}
+    .opts-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#333;margin-bottom:8px}
+    .opt-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:#555}
+    .opt-row input[type=text],.opt-row input[type=password]{background:#080808;border:1px solid #1a1a1a;border-radius:2px;padding:5px 8px;color:#fff;font-family:monospace;font-size:11px;flex:1}
+    .opt-row input[type=range]{flex:1;accent-color:#fff}
+    .opt-row label{display:flex;align-items:center;gap:5px;cursor:pointer}
+    input.full{background:#080808;border:1px solid #1a1a1a;border-radius:2px;padding:7px 10px;color:#fff;font-family:monospace;font-size:12px;width:100%;margin-bottom:6px}
+
+    .btn-process{display:block;width:100%;padding:11px;background:#fff;color:#000;border:none;border-radius:3px;font-family:monospace;font-size:13px;font-weight:bold;cursor:pointer;margin-top:10px;transition:.15s}
+    .btn-process:hover{background:#ddd}
+    .btn-process:disabled{background:#111;color:#333;cursor:not-allowed}
+
+    #progressWrap{display:none;margin:14px 0}
+    .prog-hdr{display:flex;justify-content:space-between;font-size:10px;color:#444;margin-bottom:5px}
+    .prog-track{height:3px;background:#111;border-radius:2px;overflow:hidden}
+    .prog-fill{height:100%;background:#fff;border-radius:2px;transition:width .3s}
+    .prog-note{font-size:10px;color:#222;margin-top:4px;text-align:center}
+
+    #downloadWrap{display:none;margin-top:18px;padding-top:16px;border-top:1px solid #111}
+    .dl-ok{font-size:12px;color:#777;margin-bottom:10px}
+    .btn-dl{display:block;width:100%;padding:11px;background:#fff;color:#000;border:none;border-radius:3px;font-family:monospace;font-size:13px;font-weight:bold;cursor:pointer;margin-bottom:7px}
+    .btn-dl:hover{background:#ddd}
+    .btn-reset{background:none;border:none;color:#333;font-family:monospace;font-size:11px;cursor:pointer;display:block;width:100%;padding:5px}
+    .btn-reset:hover{color:#fff}
+    footer{border-top:1px solid #0f0f0f;padding:10px 20px;font-size:10px;color:#1a1a1a;display:flex;justify-content:space-between}
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">❄ ColdPDF</span>
+  <a class="back" href="../index.html">← All Tools</a>
+</nav>
+
+<main>
+  <div class="tool-header">
+    <div class="icon" id="tIcon"></div>
+    <h1 id="tName"></h1>
+    <p id="tDesc"></p>
+  </div>
+
+  <div class="sec">🔒 <b>Files never leave your device</b> — all processing in browser only</div>
+
+  <div class="dz" id="dropzone">
+    <div class="dz-icon">📂</div>
+    <div class="dz-title" id="dzTitle">Drop file here</div>
+    <div class="dz-sub" id="dzSub">or click to browse</div>
+    <div class="dz-hint">Nothing is uploaded</div>
+    <input type="file" id="fileInput">
+  </div>
+
+  <div id="fileList"></div>
+
+  <div class="opts" id="optsArea" style="display:none">
+    <div class="opts-title">Options</div>
+    <div id="optsContent"></div>
+  </div>
+
+  <button class="btn-process" id="processBtn" disabled id="processBtn">Process</button>
+
+  <div id="progressWrap">
+    <div class="prog-hdr"><span id="progLabel">Processing...</span><span id="progPct">0%</span></div>
+    <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    <div class="prog-note">🔒 Running in your browser</div>
+  </div>
+
+  <div id="downloadWrap">
+    <div class="dl-ok" id="dlMsg">✅ Done!</div>
+    <button class="btn-dl" id="downloadBtn">⬇ Download</button>
+    <button class="btn-reset" id="resetBtn">← Process another file</button>
+  </div>
+</main>
+
+<footer>
+  <span id="footerFile">tool.html</span>
+  <span>❄ ColdPDF test build · add new tool in TOOLS config below</span>
+</footer>
+
+<script src="../core/utils/file-handler.js"></script>
+<script src="../core/utils/bridge.js"></script>
+<script>
+
+var TOOLS = {
+  'merge': {
+    name: 'Merge PDF',
+    icon: '🔗',
+    desc: 'Combine multiple PDF files into one document.',
+    accept: '.pdf',
+    multiple: true,
+    dzTitle: 'Drop PDF files here (select multiple)',
+    btnLabel: '🔗 Merge PDFs',
+    dlName: 'merged.pdf',
+    workerPath: 'organize/merge.worker.js',
+    options: null,
+    minFiles: 2
+  },
+  'split': {
+    name: 'Split PDF',
+    icon: '✂️',
+    desc: 'Extract pages or split into parts by page range.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '✂️ Split PDF',
+    dlName: 'split.pdf',
+    workerPath: 'organize/split.worker.js',
+    options: [
+      { type: 'text', id: 'pageRange', label: 'Page range:', placeholder: 'e.g. 1-3, 5, 7-9' }
+    ]
+  },
+  'delete-pages': {
+    name: 'Delete Pages',
+    icon: '🗑️',
+    desc: 'Remove specific pages from your PDF.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '🗑️ Delete Pages',
+    dlName: 'cleaned.pdf',
+    workerPath: 'organize/delete-pages.worker.js',
+    options: [
+      { type: 'text', id: 'deletePages', label: 'Pages to remove:', placeholder: 'e.g. 1,3,5 or 2-4' }
+    ]
+  },
+  'reorder-pages': {
+    name: 'Reorder Pages',
+    icon: '↕️',
+    desc: 'Rearrange pages to a custom order.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '↕️ Reorder Pages',
+    dlName: 'reordered.pdf',
+    workerPath: 'organize/reorder-pages.worker.js',
+    options: [
+      { type: 'text', id: 'pageOrder', label: 'New page order:', placeholder: 'e.g. 3,1,2,4' }
+    ]
+  },
+  'mark-pdf': {
+    name: 'Mark PDF',
+    icon: '🖍️',
+    desc: 'Add a colored highlight mark to pages.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '🖍️ Mark PDF',
+    dlName: 'marked.pdf',
+    workerPath: 'organize/mark-pdf.worker.js',
+    options: [
+      { type: 'radio', name: 'markColor', label: 'Color:', choices: [{ value: 'yellow', label: 'Yellow' }, { value: 'red', label: 'Red' }, { value: 'blue', label: 'Blue' }], defaultVal: 'yellow' }
+    ]
+  },
+  'compress': {
+    name: 'Compress PDF',
+    icon: '🗜️',
+    desc: 'Reduce PDF file size in your browser.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '🗜️ Compress PDF',
+    dlName: 'compressed.pdf',
+    workerPath: 'optimize/compress.worker.js',
+    options: [
+      { type: 'range', id: 'level', label: 'Level:', min: 1, max: 3, value: 2, leftLabel: 'Low', rightLabel: 'High' }
+    ]
+  },
+  'rotate': {
+    name: 'Rotate PDF',
+    icon: '🔄',
+    desc: 'Rotate all pages in your PDF.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '🔄 Rotate PDF',
+    dlName: 'rotated.pdf',
+    workerPath: 'organize/rotate.worker.js',
+    options: [
+      { type: 'radio', name: 'deg', label: 'Angle:', choices: [{ value: '90', label: '90° Clockwise' }, { value: '180', label: '180°' }, { value: '270', label: '90° Counter-clockwise' }], defaultVal: '90' }
+    ]
+  },
+  'watermark': {
+    name: 'Watermark PDF',
+    icon: '🔖',
+    desc: 'Add a text watermark to every page.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '🔖 Add Watermark',
+    dlName: 'watermarked.pdf',
+    workerPath: 'security/watermark.worker.js',
+    options: [
+      { type: 'text', id: 'wmText', label: 'Watermark text:', placeholder: 'e.g. CONFIDENTIAL' },
+      { type: 'range', id: 'wmOpacity', label: 'Opacity:', min: 10, max: 80, value: 30, leftLabel: '10%', rightLabel: '80%' }
+    ]
+  },
+  'protect': {
+    name: 'Protect PDF',
+    icon: '🔐',
+    desc: 'Password-protect your PDF. Encryption in browser.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '🔐 Protect PDF',
+    dlName: 'protected.pdf',
+    workerPath: 'security/protect.worker.js',
+    options: [
+      { type: 'password', id: 'pwd1', label: 'Password:', placeholder: 'Enter password' },
+      { type: 'password', id: 'pwd2', label: 'Confirm:', placeholder: 'Confirm password' }
+    ]
+  },
+  'unlock': {
+    name: 'Unlock PDF',
+    icon: '🔓',
+    desc: 'Remove password protection from a PDF.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a protected PDF here',
+    btnLabel: '🔓 Unlock PDF',
+    dlName: 'unlocked.pdf',
+    workerPath: 'security/unlock.worker.js',
+    options: [
+      { type: 'password', id: 'unlockPwd', label: 'PDF Password:', placeholder: 'Enter PDF password' }
+    ]
+  },
+  'organize': {
+    name: 'Organize Pages',
+    icon: '📋',
+    desc: 'Reorder or delete pages, then save.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '📋 Save Organized PDF',
+    dlName: 'organized.pdf',
+    workerPath: 'organize/organize.worker.js',
+    options: [
+      { type: 'text', id: 'pageOrder', label: 'New page order:', placeholder: 'e.g. 3,1,2 (or leave blank to just delete pages)' }
+    ]
+  },
+  'pdf-to-jpg': {
+    name: 'PDF → JPG',
+    icon: '🖼️',
+    desc: 'Convert PDF pages to JPG images. Downloads as ZIP.',
+    accept: '.pdf',
+    multiple: false,
+    dzTitle: 'Drop a PDF file here',
+    btnLabel: '🖼️ Convert to JPG',
+    dlName: 'pages.zip',
+    dlMime: 'application/zip',
+    workerPath: 'images/pdf-to-jpg.worker.js',
+    options: [
+      { type: 'range', id: 'dpi', label: 'Quality:', min: 1, max: 3, value: 2, leftLabel: '72dpi', rightLabel: '216dpi' }
+    ]
+  },
+  'jpg-to-pdf': {
+    name: 'JPG → PDF',
+    icon: '📄',
+    name: 'JPG to PDF', icon: '📄', desc: 'Convert JPG/PNG/WebP images to PDF.',
+    accept: '.jpg,.jpeg,.png,.webp', multiple: true, dzTitle: 'Drop image files here',
+    btnLabel: '📄 Convert to PDF', dlName: 'images.pdf', workerPath: 'images/jpg-to-pdf.worker.js',
+    options: null, minFiles: 1
+  },
+  'png-to-pdf': {
+    name: 'PNG to PDF', icon: '📄', desc: 'Convert PNG images to a PDF.',
+    accept: '.png', multiple: true, dzTitle: 'Drop PNG files here',
+    btnLabel: '📄 Convert to PDF', dlName: 'images.pdf', workerPath: 'images/png-to-pdf.worker.js',
+    options: null, minFiles: 1
+  },
+  'extract-images': {
+    name: 'Extract Images', icon: '📦', desc: 'Export all PDF pages as images in a ZIP.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📦 Extract Images', dlName: 'images.zip', dlMime: 'application/zip',
+    workerPath: 'images/extract-images.worker.js', options: null
+  },
+  'add-image': {
+    name: 'Add Image/Logo', icon: '🖼️', desc: 'Stamp an image or logo on every PDF page.',
+    accept: '.pdf,.jpg,.jpeg,.png', multiple: true, dzTitle: 'Drop PDF first, then logo image',
+    btnLabel: '🖼️ Add Image', dlName: 'stamped.pdf', workerPath: 'images/add-image.worker.js',
+    minFiles: 2,
+    options: [
+      { type:'radio', name:'position', label:'Position:', choices:[{value:'bottom-right',label:'Bottom Right'},{value:'bottom-left',label:'Bottom Left'},{value:'top-right',label:'Top Right'}], defaultVal:'bottom-right' },
+      { type:'range', id:'logoSize', label:'Size %:', min:5, max:40, value:15, leftLabel:'Small', rightLabel:'Large' }
+    ]
+  },
+  'compress': {
+    name: 'Compress PDF', icon: '🗜️', desc: 'Reduce PDF file size in your browser.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🗜️ Compress PDF', dlName: 'compressed.pdf', workerPath: 'optimize/compress.worker.js',
+    options: [{ type:'range', id:'level', label:'Level:', min:1, max:3, value:2, leftLabel:'Low', rightLabel:'High' }]
+  },
+  'image-compress': {
+    name: 'Image Compress', icon: '⚡', desc: 'Re-render PDF at lower res to shrink image-heavy files.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '⚡ Compress Images', dlName: 'compressed.pdf', workerPath: 'optimize/image-compress.worker.js',
+    options: [
+      { type:'range', id:'quality', label:'Quality:', min:1, max:10, value:6, leftLabel:'Smallest', rightLabel:'Best' },
+      { type:'range', id:'scale',   label:'Res:', min:1, max:3, value:2, leftLabel:'0.5x', rightLabel:'1.5x' }
+    ]
+  },
+  'protect': {
+    name: 'Password Protect', icon: '🔐', desc: 'Password-encrypt your PDF in browser.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🔐 Protect PDF', dlName: 'protected.pdf', workerPath: 'security/protect.worker.js',
+    options: [
+      { type:'password', id:'pwd1', label:'Password:', placeholder:'Enter password' },
+      { type:'password', id:'pwd2', label:'Confirm:',  placeholder:'Confirm password' }
+    ]
+  },
+  'unlock': {
+    name: 'Remove Password', icon: '🔓', desc: 'Remove password protection from a PDF.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a protected PDF here',
+    btnLabel: '🔓 Unlock PDF', dlName: 'unlocked.pdf', workerPath: 'security/unlock.worker.js',
+    options: [{ type:'password', id:'unlockPwd', label:'PDF Password:', placeholder:'Enter PDF password' }]
+  },
+  'watermark': {
+    name: 'Add Watermark', icon: '🔖', desc: 'Add a diagonal text watermark to every page.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🔖 Add Watermark', dlName: 'watermarked.pdf', workerPath: 'security/watermark.worker.js',
+    options: [
+      { type:'text',  id:'wmText',    label:'Watermark text:', placeholder:'e.g. CONFIDENTIAL' },
+      { type:'range', id:'wmOpacity', label:'Opacity:', min:10, max:80, value:30, leftLabel:'10%', rightLabel:'80%' }
+    ]
+  },
+  'redact': {
+    name: 'Redact PDF', icon: '⬛', desc: 'Cover sensitive content with black boxes.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '⬛ Redact PDF', dlName: 'redacted.pdf', workerPath: 'security/redact.worker.js',
+    options: [{ type:'text', id:'redactAreas', label:'Areas (x,y,w,h;...):', placeholder:'e.g. 100,200,200,30 or blank for demo' }]
+  },
+  'add-page-numbers': {
+    name: 'Add Page Numbers', icon: '🔢', desc: 'Number every page of your PDF.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🔢 Add Page Numbers', dlName: 'numbered.pdf', workerPath: 'edit/add-page-numbers.worker.js',
+    options: [
+      { type:'radio', name:'numPosition', label:'Position:', choices:[{value:'bottom-center',label:'Bottom Center'},{value:'bottom-right',label:'Bottom Right'},{value:'top-center',label:'Top Center'}], defaultVal:'bottom-center' },
+      { type:'text', id:'startNum', label:'Start from:', placeholder:'1' }
+    ]
+  },
+  'pdf-to-text': {
+    name: 'PDF to Text', icon: '📝', desc: 'Extract all text from PDF as .txt file.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📝 Extract Text', dlName: 'extracted.txt', dlMime: 'text/plain',
+    workerPath: 'edit/pdf-to-text.worker.js', options: null
+  },
+  'grayscale': {
+    name: 'Grayscale Convert', icon: '🩶', desc: 'Convert all pages to black & white.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🩶 Convert to Grayscale', dlName: 'grayscale.pdf',
+    workerPath: 'edit/grayscale.worker.js', options: null
+  },
+  'dark-mode': {
+    name: 'PDF Dark Mode', icon: '🌑', desc: 'Convert PDF to a dark background version.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🌑 Dark Mode PDF', dlName: 'dark-mode.pdf',
+    workerPath: 'edit/dark-mode.worker.js', options: null
+  },
+  'invert-colors': {
+    name: 'Invert Colors', icon: '🔲', desc: 'Invert all pixel colors in the PDF.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🔲 Invert Colors', dlName: 'inverted.pdf',
+    workerPath: 'edit/invert-colors.worker.js', options: null
+  },
+  'reverse-pages': {
+    name: 'Reverse Pages', icon: '🔃', desc: 'Flip page order — last page first.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🔃 Reverse Pages', dlName: 'reversed.pdf',
+    workerPath: 'edit/reverse-pages.worker.js', options: null
+  },
+  'add-blank-pages': {
+    name: 'Add Blank Pages', icon: '📄', desc: 'Insert blank pages at specified positions.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📄 Add Blank Pages', dlName: 'with-blanks.pdf', workerPath: 'edit/add-blank-pages.worker.js',
+    options: [
+      { type:'text', id:'afterPages',  label:'Insert after pages:', placeholder:'e.g. 1,3 (blank = end)' },
+      { type:'text', id:'blankCount',  label:'Count:', placeholder:'1' }
+    ]
+  },
+  'duplicate-pages': {
+    name: 'Duplicate Pages', icon: '📋', desc: 'Copy specified pages multiple times.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📋 Duplicate Pages', dlName: 'duplicated.pdf', workerPath: 'edit/duplicate-pages.worker.js',
+    options: [
+      { type:'text', id:'duplicatePages', label:'Pages to dup:', placeholder:'all or e.g. 1,3' },
+      { type:'text', id:'duplicateTimes', label:'Times:', placeholder:'2' }
+    ]
+  },
+  'metadata-editor': {
+    name: 'Metadata Editor', icon: '🏷️', desc: 'Edit PDF title, author, subject, keywords.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '🏷️ Save Metadata', dlName: 'edited.pdf', workerPath: 'edit/metadata-editor.worker.js',
+    options: [
+      { type:'text', id:'metaTitle',    label:'Title:',    placeholder:'Document Title' },
+      { type:'text', id:'metaAuthor',   label:'Author:',   placeholder:'Author Name' },
+      { type:'text', id:'metaSubject',  label:'Subject:',  placeholder:'Subject' },
+      { type:'text', id:'metaKeywords', label:'Keywords:', placeholder:'keyword1, keyword2' },
+      { type:'text', id:'metaCreator',  label:'Creator:',  placeholder:'App name' }
+    ]
+  },
+  'flatten': {
+    name: 'Flatten PDF', icon: '⬜', desc: 'Remove interactive form fields.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '⬜ Flatten PDF', dlName: 'flattened.pdf',
+    workerPath: 'edit/flatten.worker.js', options: null
+  },
+  'add-qr-code': {
+    name: 'Add QR Code', icon: '⬛', desc: 'Generate and stamp a QR code on every page.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '⬛ Add QR Code', dlName: 'with-qr.pdf', workerPath: 'edit/add-qr-code.worker.js',
+    options: [
+      { type:'text', id:'qrText', label:'QR content:', placeholder:'https://example.com or any text' },
+      { type:'radio', name:'qrPosition', label:'Position:', choices:[{value:'bottom-right',label:'Bottom Right'},{value:'bottom-left',label:'Bottom Left'},{value:'top-right',label:'Top Right'}], defaultVal:'bottom-right' },
+      { type:'range', id:'qrSize', label:'Size:', min:40, max:150, value:80, leftLabel:'Small', rightLabel:'Large' }
+    ]
+  },
+  'add-barcode': {
+    name: 'Add Barcode', icon: '|||', desc: 'Stamp a barcode on every PDF page.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '||| Add Barcode', dlName: 'with-barcode.pdf', workerPath: 'edit/add-barcode.worker.js',
+    options: [
+      { type:'text', id:'barcodeText', label:'Barcode value:', placeholder:'e.g. 123456789' },
+      { type:'radio', name:'barcodePosition', label:'Position:', choices:[{value:'bottom-center',label:'Bottom Center'},{value:'top-center',label:'Top Center'},{value:'bottom-right',label:'Bottom Right'}], defaultVal:'bottom-center' }
+    ]
+  },
+  'word-to-pdf': {
+    name: 'Word to PDF', icon: '📝', desc: 'Convert a DOCX file to PDF.',
+    accept: '.docx', multiple: false, dzTitle: 'Drop a DOCX file here',
+    btnLabel: '📝 Convert to PDF', dlName: 'converted.pdf', workerPath: 'edit/word-to-pdf.worker.js',
+    options: null
+  },
+  'pdf-to-word': {
+    name: 'PDF to Word', icon: '📃', desc: 'Extract PDF text and save as DOCX.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📃 Convert to Word', dlName: 'extracted.docx',
+    dlMime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    workerPath: 'edit/pdf-to-word.worker.js', options: null
+  },
+  'markdown-to-pdf': {
+    name: 'Markdown to PDF', icon: '📝', desc: 'Convert a .md Markdown file to PDF.',
+    accept: '.md,.txt', multiple: false, dzTitle: 'Drop a .md file here',
+    btnLabel: '📝 Convert to PDF', dlName: 'document.pdf', workerPath: 'edit/markdown-to-pdf.worker.js',
+    options: null
+  },
+  'html-to-pdf': {
+    name: 'HTML to PDF', icon: '🌐', desc: 'Convert an HTML file to PDF (text extraction).',
+    accept: '.html,.htm', multiple: false, dzTitle: 'Drop an HTML file here',
+    btnLabel: '🌐 Convert to PDF', dlName: 'page.pdf', workerPath: 'edit/html-to-pdf.worker.js',
+    options: null
+  },
+  'id-card-to-pdf': {
+    name: 'ID Card to PDF', icon: '🪪', desc: 'Generate a printable ID card layout as PDF.',
+    accept: '.jpg,.jpeg,.png', multiple: false, dzTitle: 'Drop photo (optional)',
+    btnLabel: '🪪 Generate ID Card', dlName: 'id-card.pdf', workerPath: 'id-card/id-card-to-pdf.worker.js',
+    skipFileRequired: true,
+    options: [
+      { type:'text', id:'orgName',  label:'Organization:', placeholder:'Organization Name' },
+      { type:'text', id:'cardName', label:'Full Name:',    placeholder:'John Doe' },
+      { type:'text', id:'cardRole', label:'Designation:',  placeholder:'Software Engineer' },
+      { type:'text', id:'cardId',   label:'ID Number:',    placeholder:'ID: 000001' }
+    ]
+  },
+  'ppt-to-pdf': {
+    name: 'PPT to PDF', icon: '📊', desc: 'Convert PowerPoint PPTX slides to PDF.',
+    accept: '.pptx', multiple: false, dzTitle: 'Drop a PPTX file here',
+    btnLabel: '📊 Convert to PDF', dlName: 'slides.pdf', workerPath: 'print/ppt-to-pdf.worker.js',
+    options: null
+  },
+  'ppt-invert-to-pdf': {
+    name: 'PPT Invert to PDF', icon: '🌑', desc: 'Convert PPTX to PDF with dark slide backgrounds.',
+    accept: '.pptx', multiple: false, dzTitle: 'Drop a PPTX file here',
+    btnLabel: '🌑 Convert (Dark)', dlName: 'slides-dark.pdf', workerPath: 'print/ppt-invert-to-pdf.worker.js',
+    options: null
+  },
+  'compare-pdf': {
+    name: 'Compare PDF', icon: '⚖️', desc: 'Find text differences between two PDF documents.',
+    accept: '.pdf', multiple: true, dzTitle: 'Drop both PDF files here (select two)',
+    btnLabel: '⚖️ Compare PDFs', dlName: 'comparison-report.txt', dlMime: 'text/plain',
+    workerPath: 'edit/compare-pdf.worker.js', options: null, minFiles: 2
+  },
+  'scan-to-pdf': {
+    name: 'Scan to PDF', icon: '📷', desc: 'Convert photos or captured pages to a PDF document.',
+    accept: '.jpg,.jpeg,.png,.webp', multiple: true, dzTitle: 'Drop scanned images here',
+    btnLabel: '📷 Scan to PDF', dlName: 'scanned.pdf', workerPath: 'images/scan-to-pdf.worker.js',
+    options: [{ type:'radio', name:'scanFilter', label:'Filter:', choices:[{value:'monochrome',label:'Monochrome Doc'},{value:'color-enhanced',label:'Color Enhanced'}], defaultVal:'monochrome' }]
+  },
+  'repair-pdf': {
+    name: 'Repair PDF', icon: '🔧', desc: 'Fix damaged, corrupted or unreadable PDF files.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop damaged PDF here',
+    btnLabel: '🔧 Repair PDF', dlName: 'repaired.pdf', workerPath: 'optimize/repair-pdf.worker.js',
+    options: null
+  },
+  'sign-pdf': {
+    name: 'Sign PDF', icon: '✍️', desc: 'Stamp a signature image or text onto any PDF page.',
+    accept: '.pdf,.png,.jpg,.jpeg', multiple: true, dzTitle: 'Drop PDF first, then signature image (optional)',
+    btnLabel: '✍️ Sign PDF', dlName: 'signed.pdf', workerPath: 'security/sign-pdf.worker.js',
+    options: [
+      { type:'text', id:'sigText', label:'Signature text:', placeholder:'Enter name or text' },
+      { type:'text', id:'sigPage', label:'Page number:', placeholder:'1' },
+      { type:'text', id:'sigX', label:'X Position:', placeholder:'100' },
+      { type:'text', id:'sigY', label:'Y Position:', placeholder:'100' }
+    ]
+  },
+  'pdf-to-pdfa': {
+    name: 'PDF to PDF/A', icon: '📜', desc: 'Convert PDF files to PDF/A for long-term archiving.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📜 Convert to PDF/A', dlName: 'archived.pdf', workerPath: 'security/pdf-to-pdfa.worker.js',
+    options: null
+  },
+  'edit-pdf': {
+    name: 'Edit PDF', icon: '✏️', desc: 'Add text stamp overlay onto PDF pages.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '✏️ Apply Edits', dlName: 'edited.pdf', workerPath: 'edit/edit-pdf.worker.js',
+    options: [
+      { type:'text', id:'addText', label:'Overlay text:', placeholder:'Enter text to stamp' },
+      { type:'text', id:'textSize', label:'Text size:', placeholder:'12' },
+      { type:'text', id:'targetPage', label:'Page number:', placeholder:'1' },
+      { type:'text', id:'textX', label:'X coordinate:', placeholder:'50' },
+      { type:'text', id:'textY', label:'Y coordinate:', placeholder:'50' }
+    ]
+  },
+  'ocr-pdf': {
+    name: 'OCR PDF', icon: '🔍', desc: 'Extract readable text characters from scanned PDF pages.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop scanned PDF here',
+    btnLabel: '🔍 Run OCR Scan', dlName: 'ocr-text.txt', dlMime: 'text/plain',
+    workerPath: 'edit/ocr-pdf.worker.js',
+    options: [{ type:'radio', name:'ocrLang', label:'Language:', choices:[{value:'eng',label:'English'},{value:'fra',label:'French'},{value:'deu',label:'German'}], defaultVal:'eng' }]
+  },
+  'crop-pdf': {
+    name: 'Crop PDF', icon: '📐', desc: 'Crop page margins by percentage values.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📐 Crop PDF', dlName: 'cropped.pdf', workerPath: 'edit/crop-pdf.worker.js',
+    options: [
+      { type:'range', id:'cropLeft', label:'Left margin:', min:0, max:40, value:10, leftLabel:'0%', rightLabel:'40%' },
+      { type:'range', id:'cropRight', label:'Right margin:', min:0, max:40, value:10, leftLabel:'0%', rightLabel:'40%' },
+      { type:'range', id:'cropTop', label:'Top margin:', min:0, max:40, value:10, leftLabel:'0%', rightLabel:'40%' },
+      { type:'range', id:'cropBottom', label:'Bottom margin:', min:0, max:40, value:10, leftLabel:'0%', rightLabel:'40%' }
+    ]
+  },
+  'pdf-forms': {
+    name: 'PDF Forms', icon: '📝', desc: 'Fill out interactive form fields in a PDF.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop interactive form PDF here',
+    btnLabel: '📝 Fill Form Fields', dlName: 'filled.pdf', workerPath: 'edit/pdf-forms.worker.js',
+    options: [
+      { type:'text', id:'formFieldName', label:'Field name:', placeholder:'e.g. FirstName' },
+      { type:'text', id:'formFieldValue', label:'Field value:', placeholder:'Enter value to set' }
+    ]
+  },
+  'pdf-to-ppt': {
+    name: 'PDF to PowerPoint', icon: '📊', desc: 'Convert PDF pages to a PPTX presentation.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📊 Convert to PPTX', dlName: 'presentation.pptx', dlMime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    workerPath: 'edit/pdf-to-ppt.worker.js', options: null
+  },
+  'pdf-to-excel': {
+    name: 'PDF to Excel', icon: '📈', desc: 'Convert PDF text tables to a CSV spreadsheet.',
+    accept: '.pdf', multiple: false, dzTitle: 'Drop a PDF file here',
+    btnLabel: '📈 Convert to Excel', dlName: 'spreadsheet.csv', dlMime: 'text/csv',
+    workerPath: 'edit/pdf-to-excel.worker.js', options: null
+  },
+  'excel-to-pdf': {
+    name: 'Excel to PDF', icon: '📄', desc: 'Convert CSV spreadsheet tables to a PDF grid.',
+    accept: '.csv,.txt', multiple: false, dzTitle: 'Drop CSV/Text file here',
+    btnLabel: '📄 Convert to PDF', dlName: 'spreadsheet.pdf', workerPath: 'edit/excel-to-pdf.worker.js',
+    options: null
+  }
+};
+
+var toolId = new URLSearchParams(window.location.search).get('tool') || 'merge';
+var T = TOOLS[toolId];
+
+if (!T) {
+  document.body.innerHTML = '<div style="padding:40px;color:#f55">Unknown tool: ' + toolId + '<br><a href="../index.html" style="color:#aaa">← Back</a></div>';
+  throw new Error('Unknown tool');
+}
+
+document.title = T.name + ' — ColdPDF';
+document.getElementById('tIcon').textContent = T.icon;
+document.getElementById('tName').textContent = T.name;
+document.getElementById('tDesc').textContent = T.desc;
+document.getElementById('dzTitle').textContent = T.dzTitle;
+document.getElementById('processBtn').textContent = T.btnLabel;
+document.getElementById('footerFile').textContent = 'tool.html?tool=' + toolId;
+
+var fi = document.getElementById('fileInput');
+fi.accept = T.accept;
+if (T.multiple) fi.setAttribute('multiple', '');
+
+if (T.options && T.options.length > 0) {
+  document.getElementById('optsArea').style.display = 'block';
+  var oc = document.getElementById('optsContent');
+  T.options.forEach(function(o) {
+    var row = document.createElement('div');
+    row.className = 'opt-row';
+    if (o.type === 'text' || o.type === 'password') {
+      row.innerHTML = '<span>' + o.label + '</span><input type="' + o.type + '" id="' + o.id + '" placeholder="' + (o.placeholder||'') + '">';
+    } else if (o.type === 'range') {
+      row.innerHTML = '<span>' + o.label + '</span><span style="color:#333">' + o.leftLabel + '</span><input type="range" id="' + o.id + '" min="' + o.min + '" max="' + o.max + '" value="' + o.value + '"><span style="color:#333">' + o.rightLabel + '</span>';
+    } else if (o.type === 'radio') {
+      row.innerHTML = '<span>' + o.label + '</span>' + o.choices.map(function(c, i) {
+        return '<label><input type="radio" name="' + o.name + '" value="' + c.value + '"' + (i===0?' checked':'') + '> ' + c.label + '</label>';
+      }).join('');
+    }
+    oc.appendChild(row);
+  });
+}
+
+var files = [];
+var resultBuffer = null;
+
+var dz = document.getElementById('dropzone');
+var pb = document.getElementById('processBtn');
+var progWrap = document.getElementById('progressWrap');
+var dlWrap = document.getElementById('downloadWrap');
+
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+dz.addEventListener('drop', function(e){
+  e.preventDefault(); dz.classList.remove('over');
+  addFiles(Array.from(e.dataTransfer.files));
+});
+fi.addEventListener('change', function(){
+  addFiles(Array.from(fi.files));
+  fi.value = '';
+});
+
+function addFiles(newFiles) {
+  if (T.multiple) {
+    files = files.concat(newFiles.filter(function(f){ return matchAccept(f); }));
+  } else {
+    files = newFiles.filter(function(f){ return matchAccept(f); }).slice(0,1);
+  }
+  renderList();
+}
+
+function matchAccept(f) {
+  var exts = T.accept.split(',');
+  return exts.some(function(ext){ return f.name.toLowerCase().endsWith(ext.trim()); });
+}
+
+function renderList() {
+  var fl = document.getElementById('fileList');
+  fl.innerHTML = '';
+  var minFiles = T.skipFileRequired ? 0 : (T.minFiles || 1);
+  files.forEach(function(f, i){
+    var d = document.createElement('div');
+    d.className = 'fi';
+    d.innerHTML = '<span class="fi-name">' + f.name + '</span><span class="fi-size">' + (f.size/1024).toFixed(0) + ' KB</span><button class="fi-rm" data-i="' + i + '">✕</button>';
+    fl.appendChild(d);
+  });
+  fl.querySelectorAll('.fi-rm').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      files.splice(parseInt(btn.dataset.i), 1);
+      renderList();
+    });
+  });
+  pb.disabled = files.length < minFiles;
+  if (files.length === 1 && !T.multiple) {
+    document.getElementById('dzTitle').textContent = files[0].name;
+  }
+}
+
+pb.addEventListener('click', function() {
+  if (!files.length && !T.skipFileRequired) return;
+  pb.disabled = true;
+  progWrap.style.display = 'block';
+  setProgress(10, 'Reading files...');
+
+  Promise.all(files.map(function(f){ return readFileAsBuffer(f); }))
+  .then(function(buffers) {
+    setProgress(20, 'Starting worker...');
+    var opts = getOptions();
+    return runWorker(T.workerPath, buffers, opts, function(pct, label) {
+      setProgress(pct, label || 'Processing...');
+    });
+  })
+  .then(function(result) {
+    resultBuffer = result;
+    setProgress(100, 'Done!');
+    setTimeout(function(){
+      progWrap.style.display = 'none';
+      dlWrap.style.display = 'block';
+      document.getElementById('dlMsg').textContent = '✅ ' + T.name + ' complete!';
+      document.getElementById('downloadBtn').textContent = '⬇ Download ' + T.dlName;
+    }, 400);
+  })
+  .catch(function(err) {
+    alert('Error: ' + err.message);
+    progWrap.style.display = 'none';
+    pb.disabled = false;
+  });
+});
+
+function setProgress(pct, label) {
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progPct').textContent = pct + '%';
+  document.getElementById('progLabel').textContent = label;
+}
+
+function getOptions() {
+  var opts = {};
+  if (!T.options) return opts;
+  T.options.forEach(function(o) {
+    if (o.type === 'radio') {
+      var el = document.querySelector('input[name="' + o.name + '"]:checked');
+      if (el) opts[o.name] = el.value;
+    } else if (o.id) {
+      var el = document.getElementById(o.id);
+      if (el) opts[o.id] = el.value;
+    }
+  });
+  return opts;
+}
+
+document.getElementById('downloadBtn').addEventListener('click', function(){
+  if (resultBuffer) {
+    downloadBuffer(resultBuffer, T.dlName, T.dlMime || 'application/pdf');
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', function(){
+  files = [];
+  resultBuffer = null;
+  renderList();
+  dlWrap.style.display = 'none';
+  progWrap.style.display = 'none';
+  pb.disabled = true;
+  document.getElementById('dzTitle').textContent = T.dzTitle;
+});
+
+</script>
+</body>
+</html>
+
+

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organize PDF — Visual Editor</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a0a;color:#fff;font-family:monospace;font-size:13px;padding-bottom:100px;}
+    nav{border-bottom:1px solid #1a1a1a;padding:10px 20px;display:flex;gap:16px;align-items:center;background:#000;}
+    nav a{color:#aaa;text-decoration:none} nav a:hover{color:#fff}
+    .hero{padding:20px;border-bottom:1px solid #0f0f0f;background:#050505;}
+    .hero h1{font-size:20px;margin-bottom:5px}
+    .hero p{color:#666;font-size:11px}
+
+    .container{padding:20px;}
+    #dropzone{border:2px dashed #333;border-radius:6px;padding:40px;text-align:center;color:#666;cursor:pointer;background:#000;margin-bottom:20px;transition:.2s}
+    #dropzone.over{border-color:#fff;color:#fff;background:#111}
+    #fileInput{display:none}
+
+    #grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:15px;margin-top:20px;}
+    .page-thumb{position:relative;background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:5px;cursor:grab;user-select:none;transition:border .2s}
+    .page-thumb:hover{border-color:#666}
+    .page-thumb canvas{width:100%;height:auto;display:block;border:1px solid #000;background:#fff;}
+    .page-num{text-align:center;font-size:11px;margin-top:5px;color:#888;}
+
+    .delete-btn{position:absolute;top:-8px;right:-8px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-weight:bold;font-size:12px;box-shadow:0 2px 5px rgba(0,0,0,0.5);display:none;}
+    .page-thumb:hover .delete-btn{display:block;}
+    .delete-btn:hover{background:#c0392b;transform:scale(1.1)}
+
+    .dragging{opacity:0.4;border-style:dashed;}
+
+    .action-bar{position:fixed;bottom:0;left:0;right:0;background:#050505;border-top:1px solid #1a1a1a;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;z-index:100;display:none;}
+    .btn{background:#fff;color:#000;border:none;padding:10px 20px;font-family:monospace;font-weight:bold;cursor:pointer;border-radius:3px;}
+    .btn:hover{background:#ddd}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+
+    #progressWrap{display:none;flex-grow:1;margin-right:20px;}
+    #progBar{width:100%;height:6px;background:#222;border-radius:3px;overflow:hidden;margin-top:4px}
+    #progFill{width:0%;height:100%;background:#fff;transition:width .2s}
+    #progLabel{font-size:10px;color:#888;}
+
+    #downloadWrap{display:none;}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <span style="font-weight:bold;font-size:15px">❄ ColdPDF</span>
+  <a href="../index.html">← All Tools</a>
+  <span style="margin-left:auto;color:#444;font-size:11px">Visual Organizer</span>
+</nav>
+
+<div class="hero">
+  <h1>Organize PDF Pages</h1>
+  <p>Drag and drop pages to reorder them. Click the 'X' to remove pages. Visual logic processing.</p>
+</div>
+
+<div class="container">
+  <div id="dropzone">
+    <div style="font-size:24px;margin-bottom:10px">📄</div>
+    <span id="dzTitle">Click or drag a PDF here to visually organize</span>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf">
+
+  <div id="grid"></div>
+</div>
+
+<div class="action-bar" id="actionBar">
+  <div id="progressWrap">
+    <div style="display:flex;justify-content:space-between">
+      <span id="progLabel">Processing...</span>
+      <span id="progPct" style="font-size:10px;color:#888">0%</span>
+    </div>
+    <div id="progBar"><div id="progFill"></div></div>
+  </div>
+
+  <button id="processBtn" class="btn">Apply Changes</button>
+
+  <div id="downloadWrap">
+    <span style="margin-right:15px;color:#2ecc71" id="dlMsg">✅ Done!</span>
+    <button id="downloadBtn" class="btn">⬇ Download Organized PDF</button>
+  </div>
+</div>
+
+<script src="../core/utils/file-handler.js"></script>
+<script src="../core/utils/bridge.js"></script>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var file = null;
+  var pdfBuffer = null;
+  var pagesArray = [];
+  var pdfDoc = null;
+
+  var dz = document.getElementById('dropzone');
+  var fi = document.getElementById('fileInput');
+  var grid = document.getElementById('grid');
+  var actionBar = document.getElementById('actionBar');
+  var pb = document.getElementById('processBtn');
+
+  dz.addEventListener('click', function(){ fi.click(); });
+  dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+  dz.addEventListener('drop', function(e){
+    e.preventDefault(); dz.classList.remove('over');
+    if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fi.addEventListener('change', function(){
+    if(fi.files.length) handleFile(fi.files[0]);
+  });
+
+  async function handleFile(f) {
+    if (!f.name.toLowerCase().endsWith('.pdf')) return alert('Please upload a PDF file.');
+    file = f;
+    dz.style.display = 'none';
+    grid.innerHTML = '<div style="color:#888">Rendering PDF pages... Please wait...</div>';
+
+    try {
+      pdfBuffer = await readFileAsBuffer(file);
+      pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer.slice(0) }).promise;
+      pagesArray = [];
+      grid.innerHTML = '';
+      actionBar.style.display = 'flex';
+
+      for (var i = 1; i <= pdfDoc.numPages; i++) {
+        var page = await pdfDoc.getPage(i);
+        var vp = page.getViewport({ scale: 0.5 });
+
+        var canvas = document.createElement('canvas');
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        var ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+
+        pagesArray.push({
+          id: 'page_' + i,
+          originalIndex: i,
+          canvas: canvas
+        });
+      }
+
+      renderGrid();
+    } catch(err) {
+      alert('Failed to read PDF: ' + err.message);
+      dz.style.display = 'block';
+    }
+  }
+
+  function renderGrid() {
+    grid.innerHTML = '';
+    pagesArray.forEach(function(p, index) {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'page-thumb';
+      wrapper.draggable = true;
+      wrapper.dataset.index = index;
+
+      var del = document.createElement('button');
+      del.className = 'delete-btn';
+      del.textContent = '✕';
+      del.onclick = function() {
+        pagesArray.splice(index, 1);
+        renderGrid();
+      };
+
+      var label = document.createElement('div');
+      label.className = 'page-num';
+      label.textContent = 'Page ' + p.originalIndex;
+
+      wrapper.appendChild(del);
+      wrapper.appendChild(p.canvas);
+      wrapper.appendChild(label);
+      grid.appendChild(wrapper);
+
+      wrapper.addEventListener('dragstart', function(e) {
+        e.dataTransfer.setData('text/plain', index);
+        setTimeout(() => wrapper.classList.add('dragging'), 0);
+      });
+      wrapper.addEventListener('dragend', function(e) {
+        wrapper.classList.remove('dragging');
+      });
+      wrapper.addEventListener('dragover', function(e) {
+        e.preventDefault();
+      });
+      wrapper.addEventListener('drop', function(e) {
+        e.preventDefault();
+        var draggedIdx = parseInt(e.dataTransfer.getData('text/plain'));
+        var targetIdx = parseInt(wrapper.dataset.index);
+        if (draggedIdx === targetIdx || isNaN(draggedIdx)) return;
+
+        var item = pagesArray.splice(draggedIdx, 1)[0];
+        pagesArray.splice(targetIdx, 0, item);
+        renderGrid();
+      });
+    });
+  }
+
+  pb.addEventListener('click', function() {
+    if (pagesArray.length === 0) return alert('No pages remaining to save.');
+
+    var finalOrder = pagesArray.map(p => p.originalIndex).join(',');
+
+    pb.style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'block';
+
+    runWorker('organize/organize.worker.js', [pdfBuffer], { pageOrder: finalOrder }, function(pct, label) {
+      document.getElementById('progFill').style.width = pct + '%';
+      document.getElementById('progPct').textContent = pct + '%';
+      document.getElementById('progLabel').textContent = label;
+    })
+    .then(function(result) {
+      document.getElementById('progressWrap').style.display = 'none';
+      document.getElementById('downloadWrap').style.display = 'block';
+
+      document.getElementById('downloadBtn').onclick = function() {
+        downloadBuffer(result, 'organized-visual.pdf');
+      };
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+      pb.style.display = 'block';
+      document.getElementById('progressWrap').style.display = 'none';
+    });
+  });
+</script>
+</body>
+</html>
+
+

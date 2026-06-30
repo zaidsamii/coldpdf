@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ColdPDF — Test Dashboard</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#000;color:#fff;font-family:monospace;font-size:13px}
+    nav{border-bottom:1px solid #1a1a1a;padding:10px 20px;display:flex;gap:16px;align-items:center}
+    .brand{font-weight:bold;font-size:15px}
+    .badge{font-size:11px;color:#444;border:1px solid #1a1a1a;padding:2px 8px;border-radius:3px}
+    .hero{padding:24px 20px 14px;border-bottom:1px solid #0f0f0f}
+    .hero h1{font-size:20px;margin-bottom:3px}
+    .hero p{color:#444;font-size:11px}
+    .sections{padding:16px 20px 40px}
+    .section{margin-bottom:22px}
+    .cat{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#2a2a2a;border-bottom:1px solid #0f0f0f;padding-bottom:5px;margin-bottom:10px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:5px}
+    .card{display:block;border:1px solid #141414;padding:11px;border-radius:3px;background:#050505;color:#fff;text-decoration:none;transition:border-color .1s,background .1s}
+    .card:hover{border-color:#555;background:#0c0c0c}
+    .icon{font-size:16px;margin-bottom:4px}
+    .name{font-size:12px;font-weight:bold;margin-bottom:1px}
+    .desc{font-size:10px;color:#333}
+    footer{border-top:1px solid #0f0f0f;padding:10px 20px;font-size:10px;color:#1a1a1a;display:flex;justify-content:space-between}
+  </style>
+</head>
+<body>
+<nav>
+  <span class="brand">❄ ColdPDF</span>
+  <span class="badge">🔒 Browser-Only · No Upload · No Server</span>
+</nav>
+<div class="hero">
+  <h1>ColdPDF Test Dashboard</h1>
+  <p>All tools listed by section. Click to test. Files never leave your browser.</p>
+</div>
+<div class="sections">
+
+  <div class="section">
+    <div class="cat">📂 Organize Pages</div>
+    <div class="grid">
+      <a class="card" href="ui/specific-ui/merge-editor.html"><div class="icon">🔗</div><div class="name">Merge PDF</div><div class="desc">Visually combine PDFs</div></a>
+      <a class="card" href="ui/tool.html?tool=split"><div class="icon">✂️</div><div class="name">Split PDF</div><div class="desc">Extract by page range</div></a>
+      <a class="card" href="ui/specific-ui/visual-editor.html"><div class="icon">🗑️</div><div class="name">Delete Pages</div><div class="desc">Remove PDF pages visually</div></a>
+      <a class="card" href="ui/specific-ui/visual-editor.html"><div class="icon">↕️</div><div class="name">Reorder Pages</div><div class="desc">Drag and drop to rearrange</div></a>
+      <a class="card" href="ui/specific-ui/visual-editor.html"><div class="icon">🔄</div><div class="name">Rotate PDF</div><div class="desc">Rotate pages visually</div></a>
+      <a class="card" href="ui/specific-ui/mark-editor.html"><div class="icon">🖍️</div><div class="name">Mark PDF</div><div class="desc">Interactive drawing</div></a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="cat">🖼️ Images & PDF</div>
+    <div class="grid">
+      <a class="card" href="ui/tool.html?tool=pdf-to-jpg"><div class="icon">🖼️</div><div class="name">PDF to JPG</div><div class="desc">Pages → JPG images</div></a>
+      <a class="card" href="ui/tool.html?tool=pdf-to-png"><div class="icon">🖼️</div><div class="name">PDF to PNG</div><div class="desc">Pages → PNG images</div></a>
+      <a class="card" href="ui/tool.html?tool=jpg-to-pdf"><div class="icon">📄</div><div class="name">JPG to PDF</div><div class="desc">Images → PDF pages</div></a>
+      <a class="card" href="ui/tool.html?tool=png-to-pdf"><div class="icon">📄</div><div class="name">PNG to PDF</div><div class="desc">PNG images → PDF</div></a>
+      <a class="card" href="ui/tool.html?tool=extract-images"><div class="icon">📦</div><div class="name">Extract Images</div><div class="desc">All pages as images ZIP</div></a>
+      <a class="card" href="ui/tool.html?tool=add-image"><div class="icon">🖼️</div><div class="name">Add Image/Logo</div><div class="desc">Stamp logo on pages</div></a>
+      <a class="card" href="ui/tool.html?tool=scan-to-pdf"><div class="icon">📷</div><div class="name">Scan to PDF</div><div class="desc">Scanner image to PDF</div></a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="cat">⚡ Optimize PDF</div>
+    <div class="grid">
+      <a class="card" href="ui/tool.html?tool=compress"><div class="icon">🗜️</div><div class="name">Compress PDF</div><div class="desc">Reduce file size</div></a>
+      <a class="card" href="ui/tool.html?tool=image-compress"><div class="icon">⚡</div><div class="name">Image Compress</div><div class="desc">Re-render at lower res</div></a>
+      <a class="card" href="ui/tool.html?tool=repair-pdf"><div class="icon">🔧</div><div class="name">Repair PDF</div><div class="desc">Fix corrupted structures</div></a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="cat">🔒 Security & Privacy</div>
+    <div class="grid">
+      <a class="card" href="ui/tool.html?tool=protect"><div class="icon">🔐</div><div class="name">Password Protect</div><div class="desc">Encrypt with password</div></a>
+      <a class="card" href="ui/tool.html?tool=unlock"><div class="icon">🔓</div><div class="name">Remove Password</div><div class="desc">Decrypt PDF</div></a>
+      <a class="card" href="ui/tool.html?tool=watermark"><div class="icon">🔖</div><div class="name">Add Watermark</div><div class="desc">Text stamp on pages</div></a>
+      <a class="card" href="ui/tool.html?tool=redact"><div class="icon">⬛</div><div class="name">Redact PDF</div><div class="desc">Black-box sensitive areas</div></a>
+      <a class="card" href="ui/tool.html?tool=sign-pdf"><div class="icon">✍️</div><div class="name">Sign PDF</div><div class="desc">Stamps digital signature</div></a>
+      <a class="card" href="ui/tool.html?tool=pdf-to-pdfa"><div class="icon">📜</div><div class="name">PDF to PDF/A</div><div class="desc">Archive standard format</div></a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="cat">✏️ Edit & Transform</div>
+    <div class="grid">
+      <a class="card" href="ui/tool.html?tool=edit-pdf"><div class="icon">✏️</div><div class="name">Edit PDF</div><div class="desc">Generic text & stamp editor</div></a>
+      <a class="card" href="ui/tool.html?tool=add-page-numbers"><div class="icon">🔢</div><div class="name">Page Numbers</div><div class="desc">Number every page</div></a>
+      <a class="card" href="ui/tool.html?tool=pdf-to-text"><div class="icon">📝</div><div class="name">PDF to Text</div><div class="desc">Extract all text</div></a>
+      <a class="card" href="ui/tool.html?tool=ocr-pdf"><div class="icon">🔍</div><div class="name">OCR PDF</div><div class="desc">Searchable text extractor</div></a>
+      <a class="card" href="ui/tool.html?tool=crop-pdf"><div class="icon">📐</div><div class="name">Crop PDF</div><div class="desc">Crop page boundaries</div></a>
+      <a class="card" href="ui/tool.html?tool=pdf-forms"><div class="icon">📝</div><div class="name">PDF Forms</div><div class="desc">Fill interactive fields</div></a>
+      <a class="card" href="ui/tool.html?tool=grayscale"><div class="icon">🩶</div><div class="name">Grayscale Convert</div><div class="desc">Remove all colors</div></a>
+      <a class="card" href="ui/tool.html?tool=dark-mode"><div class="icon">🌑</div><div class="name">PDF Dark Mode</div><div class="desc">Dark background PDF</div></a>
+      <a class="card" href="ui/tool.html?tool=invert-colors"><div class="icon">🔲</div><div class="name">Invert Colors</div><div class="desc">Invert all pixel colors</div></a>
+      <a class="card" href="ui/tool.html?tool=reverse-pages"><div class="icon">🔃</div><div class="name">Reverse Pages</div><div class="desc">Last page becomes first</div></a>
+      <a class="card" href="ui/tool.html?tool=add-blank-pages"><div class="icon">📄</div><div class="name">Add Blank Pages</div><div class="desc">Insert empty pages</div></a>
+      <a class="card" href="ui/tool.html?tool=duplicate-pages"><div class="icon">📋</div><div class="name">Duplicate Pages</div><div class="desc">Copy pages N times</div></a>
+      <a class="card" href="ui/tool.html?tool=metadata-editor"><div class="icon">🏷️</div><div class="name">Metadata Editor</div><div class="desc">Edit title, author etc.</div></a>
+      <a class="card" href="ui/tool.html?tool=flatten"><div class="icon">⬜</div><div class="name">Flatten PDF</div><div class="desc">Remove form fields</div></a>
+      <a class="card" href="ui/tool.html?tool=add-qr-code"><div class="icon">⬛</div><div class="name">Add QR Code</div><div class="desc">QR stamp on pages</div></a>
+      <a class="card" href="ui/tool.html?tool=add-barcode"><div class="icon">|||</div><div class="name">Add Barcode</div><div class="desc">Barcode stamp on pages</div></a>
+      <a class="card" href="ui/tool.html?tool=markdown-to-pdf"><div class="icon">📝</div><div class="name">Markdown to PDF</div><div class="desc">.md file → PDF</div></a>
+      <a class="card" href="ui/tool.html?tool=html-to-pdf"><div class="icon">🌐</div><div class="name">HTML to PDF</div><div class="desc">.html file → PDF</div></a>
+      <a class="card" href="ui/tool.html?tool=word-to-pdf"><div class="icon">📄</div><div class="name">Word to PDF</div><div class="desc">DOCX → PDF</div></a>
+      <a class="card" href="ui/tool.html?tool=pdf-to-word"><div class="icon">📃</div><div class="name">PDF to Word</div><div class="desc">PDF text → DOCX</div></a>
+      <a class="card" href="ui/tool.html?tool=pdf-to-ppt"><div class="icon">📊</div><div class="name">PDF to PowerPoint</div><div class="desc">PDF to PPTX slides</div></a>
+      <a class="card" href="ui/tool.html?tool=pdf-to-excel"><div class="icon">📈</div><div class="name">PDF to Excel</div><div class="desc">PDF to tabular CSV</div></a>
+      <a class="card" href="ui/tool.html?tool=excel-to-pdf"><div class="icon">📄</div><div class="name">Excel to PDF</div><div class="desc">CSV spreadsheet → PDF</div></a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="cat">🪪 ID Card Printing</div>
+    <div class="grid">
+      <a class="card" href="ui/tool.html?tool=id-card-to-pdf"><div class="icon">🪪</div><div class="name">ID Card to PDF</div><div class="desc">Generate ID card PDF</div></a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="cat">🖨️ Print Layouts</div>
+    <div class="grid">
+      <a class="card" href="ui/tool.html?tool=ppt-to-pdf"><div class="icon">📊</div><div class="name">PowerPoint to PDF</div><div class="desc">PPTX slides → PDF</div></a>
+      <a class="card" href="ui/tool.html?tool=ppt-invert-to-pdf"><div class="icon">🌑</div><div class="name">PPT Invert to PDF</div><div class="desc">Dark PPTX → PDF</div></a>
+    </div>
+  </div>
+
+</div>
+<footer>
+  <span>index.html · ColdPDF test build · ~45 tools</span>
+  <span>New tool: add card above + TOOLS entry in ui/tool.html</span>
+</footer>
+</body>
+</html>
+
+

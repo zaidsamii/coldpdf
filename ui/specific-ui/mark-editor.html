@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Mark PDF</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a0a;color:#fff;font-family:monospace;font-size:13px;padding-bottom:100px;overflow-x:hidden;}
+    nav{border-bottom:1px solid #1a1a1a;padding:10px 20px;display:flex;gap:16px;align-items:center;background:#000;position:fixed;top:0;width:100%;z-index:200;}
+    nav a{color:#aaa;text-decoration:none} nav a:hover{color:#fff}
+
+    .toolbar{position:fixed;top:40px;left:0;right:0;background:#050505;border-bottom:1px solid #1a1a1a;padding:10px 20px;display:flex;gap:20px;align-items:center;z-index:200;}
+    .toolbar-item{display:flex;align-items:center;gap:8px;}
+    .toolbar input[type="color"]{border:none;width:30px;height:30px;border-radius:4px;cursor:pointer;background:none;}
+    .toolbar input[type="range"]{width:100px;}
+    .btn-clear{background:#333;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-family:inherit;}
+    .btn-clear:hover{background:#555;}
+
+    .container{padding:20px; margin-top:100px; display:flex; flex-direction:column; align-items:center; gap:30px;}
+    #dropzone{border:2px dashed #333;border-radius:6px;padding:40px;text-align:center;color:#666;cursor:pointer;background:#000;width:100%;max-width:600px;transition:.2s}
+    #dropzone.over{border-color:#fff;color:#fff;background:#111}
+    #fileInput{display:none}
+
+    .page-wrap{position:relative; border:1px solid #333; box-shadow:0 10px 20px rgba(0,0,0,0.5);}
+    .page-canvas{display:block; background:#fff;}
+    .draw-canvas{position:absolute; top:0; left:0; cursor:crosshair;}
+
+    .action-bar{position:fixed;bottom:0;left:0;right:0;background:#050505;border-top:1px solid #1a1a1a;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;z-index:100;display:none;}
+    .btn{background:#fff;color:#000;border:none;padding:10px 20px;font-family:monospace;font-weight:bold;cursor:pointer;border-radius:3px;}
+    .btn:hover{background:#ddd}
+
+    #progressWrap{display:none;flex-grow:1;margin-right:20px;}
+    #progBar{width:100%;height:6px;background:#222;border-radius:3px;overflow:hidden;margin-top:4px}
+    #progFill{width:0%;height:100%;background:#fff;transition:width .2s}
+    #progLabel{font-size:10px;color:#888;}
+
+    #downloadWrap{display:none;}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <span style="font-weight:bold;font-size:15px">❄ ColdPDF</span>
+  <a href="../../index.html">← All Tools</a>
+  <span style="margin-left:auto;color:#444;font-size:11px">Interactive Mark PDF</span>
+</nav>
+
+<div class="toolbar" id="toolbar" style="display:none; flex-wrap:wrap;">
+  <div class="toolbar-item">
+    <span>Type:</span>
+    <select id="brushType" style="background:#000;color:#fff;border:1px solid #333;padding:4px;border-radius:3px;font-family:monospace;">
+      <option value="pen">Pen</option>
+      <option value="pencil">Pencil</option>
+      <option value="marker">Marker</option>
+      <option value="highlighter">Highlighter</option>
+      <option value="whiteout">Whiteout</option>
+    </select>
+  </div>
+  <div class="toolbar-item">
+    <span>Color:</span>
+    <input type="color" id="brushColor" value="#ff0000">
+  </div>
+  <div class="toolbar-item">
+    <span>Size:</span>
+    <input type="range" id="brushSize" min="1" max="50" value="3">
+  </div>
+  <div class="toolbar-item">
+    <span>Opacity:</span>
+    <input type="range" id="brushOpacity" min="5" max="100" value="100">
+    <span id="opacityVal" style="width:35px;">100%</span>
+  </div>
+  <button class="btn-clear" id="btnUndo" style="margin-left:auto;">Undo Stroke</button>
+  <button class="btn-clear" id="btnClear">Clear All</button>
+</div>
+
+<div class="container" id="container">
+  <div id="dropzone">
+    <div style="font-size:24px;margin-bottom:10px">🖍️</div>
+    <span id="dzTitle">Click or drag a PDF here to start drawing</span>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf">
+</div>
+
+<div class="action-bar" id="actionBar">
+  <div id="progressWrap">
+    <div style="display:flex;justify-content:space-between">
+      <span id="progLabel">Applying Ink...</span>
+      <span id="progPct" style="font-size:10px;color:#888">0%</span>
+    </div>
+    <div id="progBar"><div id="progFill"></div></div>
+  </div>
+
+  <button id="processBtn" class="btn">Apply & Save PDF</button>
+
+  <div id="downloadWrap">
+    <span style="margin-right:15px;color:#2ecc71" id="dlMsg">✅ Done!</span>
+    <button id="downloadBtn" class="btn">⬇ Download Marked PDF</button>
+  </div>
+</div>
+
+<script src="../../core/utils/file-handler.js"></script>
+<script src="../../core/utils/bridge.js"></script>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var pdfBuffer = null;
+  var container = document.getElementById('container');
+  var actionBar = document.getElementById('actionBar');
+  var tb = document.getElementById('toolbar');
+
+  var dz = document.getElementById('dropzone');
+  var fi = document.getElementById('fileInput');
+
+  var allStrokes = [];
+  var currentStroke = null;
+  var isDrawing = false;
+  var drawCanvases = [];
+
+  dz.addEventListener('click', function(){ fi.click(); });
+  dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+  dz.addEventListener('drop', function(e){
+    e.preventDefault(); dz.classList.remove('over');
+    if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fi.addEventListener('change', function(){
+    if(fi.files.length) handleFile(fi.files[0]);
+  });
+
+  async function handleFile(f) {
+    if (!f.name.toLowerCase().endsWith('.pdf')) return alert('Please upload a PDF file.');
+    dz.style.display = 'none';
+    container.innerHTML = '<div style="color:#888">Rendering document...</div>';
+
+    try {
+      pdfBuffer = await readFileAsBuffer(f);
+      var pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer.slice(0) }).promise;
+      container.innerHTML = '';
+
+      for (var i = 1; i <= pdfDoc.numPages; i++) {
+        var page = await pdfDoc.getPage(i);
+
+        var vp = page.getViewport({ scale: 1.5 });
+
+        var wrap = document.createElement('div');
+        wrap.className = 'page-wrap';
+        wrap.style.width = vp.width + 'px';
+        wrap.style.height = vp.height + 'px';
+
+        var bgCanvas = document.createElement('canvas');
+        bgCanvas.className = 'page-canvas';
+        bgCanvas.width = vp.width; bgCanvas.height = vp.height;
+        await page.render({ canvasContext: bgCanvas.getContext('2d'), viewport: vp }).promise;
+
+        var drawCanvas = document.createElement('canvas');
+        drawCanvas.className = 'draw-canvas';
+        drawCanvas.width = vp.width; drawCanvas.height = vp.height;
+        drawCanvas.dataset.pageIndex = (i - 1);
+
+        wrap.appendChild(bgCanvas);
+        wrap.appendChild(drawCanvas);
+        container.appendChild(wrap);
+
+        setupDrawing(drawCanvas, i - 1, vp.scale);
+        drawCanvases.push({ ctx: drawCanvas.getContext('2d'), scale: vp.scale });
+      }
+
+      actionBar.style.display = 'flex';
+      tb.style.display = 'flex';
+    } catch(err) {
+      alert('Error loading PDF: ' + err.message);
+      dz.style.display = 'block';
+      container.innerHTML = '';
+      container.appendChild(dz);
+    }
+  }
+
+  function hexToRgbRatio(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+      parseInt(result[1], 16) / 255,
+      parseInt(result[2], 16) / 255,
+      parseInt(result[3], 16) / 255
+    ] : [0,0,0];
+  }
+
+  function setupDrawing(canvas, pageIndex, scale) {
+    var ctx = canvas.getContext('2d');
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    function getPos(e) {
+      var rect = canvas.getBoundingClientRect();
+      var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left),
+        y: (clientY - rect.top),
+
+        pdfX: (clientX - rect.left) / scale,
+        pdfY: (clientY - rect.top) / scale
+      };
+    }
+
+    function startDraw(e) {
+      if (e.touches && e.touches.length > 1) return;
+      e.preventDefault();
+      isDrawing = true;
+      var pos = getPos(e);
+      var colorHex = document.getElementById('brushColor').value;
+      var thickness = parseInt(document.getElementById('brushSize').value);
+      var opacityStr = document.getElementById('brushOpacity').value;
+      var opacity = parseInt(opacityStr) / 100;
+
+      currentStroke = {
+        pageIndex: pageIndex,
+        color: hexToRgbRatio(colorHex),
+        thickness: thickness,
+        opacity: opacity,
+        points: [{ x: pos.pdfX, y: pos.pdfY }]
+      };
+      allStrokes.push(currentStroke);
+
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.strokeStyle = colorHex;
+      ctx.lineWidth = thickness * scale;
+      ctx.globalAlpha = opacity;
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+      var pos = getPos(e);
+      currentStroke.points.push({ x: pos.pdfX, y: pos.pdfY });
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    }
+
+    function endDraw(e) {
+      if (isDrawing) {
+        isDrawing = false;
+        ctx.closePath();
+      }
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('mouseout', endDraw);
+
+    canvas.addEventListener('touchstart', startDraw, {passive: false});
+    canvas.addEventListener('touchmove', draw, {passive: false});
+    canvas.addEventListener('touchend', endDraw);
+  }
+
+  function redrawAll() {
+    drawCanvases.forEach(function(dc) {
+      dc.ctx.clearRect(0, 0, dc.ctx.canvas.width, dc.ctx.canvas.height);
+    });
+
+    allStrokes.forEach(function(stroke) {
+      if (!stroke.points || stroke.points.length === 0) return;
+      var dc = drawCanvases[stroke.pageIndex];
+      if (!dc) return;
+
+      var scale = dc.scale;
+      dc.ctx.beginPath();
+      dc.ctx.moveTo(stroke.points[0].x * scale, stroke.points[0].y * scale);
+
+      for (var i = 1; i < stroke.points.length; i++) {
+        dc.ctx.lineTo(stroke.points[i].x * scale, stroke.points[i].y * scale);
+      }
+
+      var r = Math.round(stroke.color[0] * 255);
+      var g = Math.round(stroke.color[1] * 255);
+      var b = Math.round(stroke.color[2] * 255);
+
+      dc.ctx.strokeStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+      dc.ctx.lineWidth = stroke.thickness * scale;
+      dc.ctx.lineCap = 'round';
+      dc.ctx.lineJoin = 'round';
+      dc.ctx.globalAlpha = stroke.opacity !== undefined ? stroke.opacity : 1.0;
+      dc.ctx.stroke();
+    });
+  }
+
+  var bType = document.getElementById('brushType');
+  var bColor = document.getElementById('brushColor');
+  var bSize = document.getElementById('brushSize');
+  var bOpacity = document.getElementById('brushOpacity');
+  var opacityVal = document.getElementById('opacityVal');
+
+  bOpacity.addEventListener('input', function() {
+    opacityVal.textContent = bOpacity.value + '%';
+  });
+
+  bType.addEventListener('change', function() {
+    if (bType.value === 'highlighter') {
+      bColor.value = '#ffff00';
+      bSize.value = 25;
+      bOpacity.value = 20;
+    } else if (bType.value === 'pencil') {
+      bColor.value = '#555555';
+      bSize.value = 1;
+      bOpacity.value = 60;
+    } else if (bType.value === 'marker') {
+      bColor.value = '#3498db';
+      bSize.value = 10;
+      bOpacity.value = 90;
+    } else if (bType.value === 'whiteout') {
+      bColor.value = '#ffffff';
+      bSize.value = 25;
+      bOpacity.value = 100;
+    } else {
+      bColor.value = '#ff0000';
+      bSize.value = 3;
+      bOpacity.value = 100;
+    }
+    opacityVal.textContent = bOpacity.value + '%';
+  });
+
+  document.getElementById('btnUndo').onclick = function() {
+    if (allStrokes.length > 0) {
+      allStrokes.pop();
+      redrawAll();
+    }
+  };
+
+  document.getElementById('btnClear').onclick = function() {
+    if (confirm('Are you sure you want to clear all ink?')) {
+      allStrokes = [];
+      redrawAll();
+    }
+  };
+
+  document.getElementById('processBtn').onclick = function() {
+    if (allStrokes.length === 0) return alert('No marks drawn on the document yet.');
+
+    var pb = document.getElementById('processBtn');
+    pb.style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'block';
+
+    runWorker('../../core/workers/organize/mark-pdf-visual.worker.js', [pdfBuffer], { strokes: allStrokes }, function(pct, label) {
+      document.getElementById('progFill').style.width = pct + '%';
+      document.getElementById('progPct').textContent = pct + '%';
+      document.getElementById('progLabel').textContent = label;
+    })
+    .then(function(result) {
+      document.getElementById('progressWrap').style.display = 'none';
+      document.getElementById('downloadWrap').style.display = 'block';
+      document.getElementById('downloadBtn').onclick = function() {
+        downloadBuffer(result, 'marked-document.pdf');
+      };
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+      pb.style.display = 'block';
+      document.getElementById('progressWrap').style.display = 'none';
+    });
+  };
+</script>
+</body>
+</html>
+
+

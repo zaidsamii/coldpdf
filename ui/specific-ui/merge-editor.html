@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Merge PDF</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a0a;color:#fff;font-family:monospace;font-size:13px;padding-bottom:100px;}
+    nav{border-bottom:1px solid #1a1a1a;padding:10px 20px;display:flex;gap:16px;align-items:center;background:#000;}
+    nav a{color:#aaa;text-decoration:none} nav a:hover{color:#fff}
+    .hero{padding:20px;border-bottom:1px solid #0f0f0f;background:#050505;}
+    .hero h1{font-size:20px;margin-bottom:5px}
+    .hero p{color:#666;font-size:11px}
+
+    .container{padding:20px; max-width: 800px; margin: 0 auto;}
+    #dropzone{border:2px dashed #333;border-radius:6px;padding:40px;text-align:center;color:#666;cursor:pointer;background:#000;margin-bottom:20px;transition:.2s}
+    #dropzone.over{border-color:#fff;color:#fff;background:#111}
+    #fileInput{display:none}
+
+    #pdfList{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:20px;}
+    .pdf-card{
+      background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:10px;
+      display:flex;flex-direction:column;align-items:center;cursor:grab;user-select:none;transition:border .2s;
+      position:relative;
+    }
+    .pdf-card:hover{border-color:#555}
+    .pdf-card.dragging{opacity:0.4;border-style:dashed;}
+
+    .canvas-wrap{width:100%;aspect-ratio:1/1.4;display:flex;justify-content:center;align-items:center;overflow:hidden;margin-bottom:8px;}
+    .page-canvas{max-width:100%;max-height:100%;display:block;border:1px solid #000;background:#fff;}
+
+    .pdf-name{font-size:11px;color:#ccc;text-align:center;word-break:break-all;line-height:1.2;margin-bottom:5px;height:26px;overflow:hidden;}
+
+    .delete-btn{position:absolute;top:-8px;right:-8px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;font-weight:bold;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.5);}
+    .delete-btn:hover{background:#c0392b;transform:scale(1.1);}
+
+    .order-badge{position:absolute;top:-10px;left:-10px;background:#3498db;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;box-shadow:0 2px 4px rgba(0,0,0,0.5);z-index:10;}
+
+    .action-bar{position:fixed;bottom:0;left:0;right:0;background:#050505;border-top:1px solid #1a1a1a;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;z-index:100;display:none;}
+    .btn{background:#fff;color:#000;border:none;padding:10px 20px;font-family:monospace;font-weight:bold;cursor:pointer;border-radius:3px;}
+    .btn:hover{background:#ddd}
+
+    #progressWrap{display:none;flex-grow:1;margin-right:20px;}
+    #progBar{width:100%;height:6px;background:#222;border-radius:3px;overflow:hidden;margin-top:4px}
+    #progFill{width:0%;height:100%;background:#fff;transition:width .2s}
+    #progLabel{font-size:10px;color:#888;}
+
+    #downloadWrap{display:none;}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <span style="font-weight:bold;font-size:15px">❄ ColdPDF</span>
+  <a href="../../index.html">← All Tools</a>
+  <span style="margin-left:auto;color:#444;font-size:11px">Visual Merge PDF</span>
+</nav>
+
+<div class="hero">
+  <h1>Merge PDFs</h1>
+  <p>Upload multiple PDF files. Drag and drop them to rearrange their order, then click Merge.</p>
+</div>
+
+<div class="container">
+  <div id="dropzone">
+    <div style="font-size:24px;margin-bottom:10px">📂</div>
+    <span id="dzTitle">Click or drag multiple PDFs here to add them</span>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf" multiple>
+
+  <div id="pdfList"></div>
+</div>
+
+<div class="action-bar" id="actionBar">
+  <div id="progressWrap">
+    <div style="display:flex;justify-content:space-between">
+      <span id="progLabel">Merging...</span>
+      <span id="progPct" style="font-size:10px;color:#888">0%</span>
+    </div>
+    <div id="progBar"><div id="progFill"></div></div>
+  </div>
+
+  <button id="processBtn" class="btn">Merge Files</button>
+
+  <div id="downloadWrap">
+    <span style="margin-right:15px;color:#2ecc71" id="dlMsg">✅ Done!</span>
+    <button id="downloadBtn" class="btn">⬇ Download Merged PDF</button>
+  </div>
+</div>
+
+<script src="../../core/utils/file-handler.js"></script>
+<script src="../../core/utils/bridge.js"></script>
+
+<script>
+  var filesArray = [];
+  var fileCounter = 0;
+
+  var dz = document.getElementById('dropzone');
+  var fi = document.getElementById('fileInput');
+  var pdfList = document.getElementById('pdfList');
+  var pb = document.getElementById('processBtn');
+  var actionBar = document.getElementById('actionBar');
+
+  dz.addEventListener('click', function(){ fi.click(); });
+  dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+  dz.addEventListener('drop', function(e){
+    e.preventDefault(); dz.classList.remove('over');
+    if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  });
+  fi.addEventListener('change', function(){
+    if(fi.files.length) handleFiles(fi.files);
+    fi.value = '';
+  });
+
+  function formatBytes(bytes) {
+    if(bytes === 0) return '0 Bytes';
+    var k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  async function handleFiles(files) {
+    var fileList = Array.from(files);
+    var added = false;
+    for (var i = 0; i < fileList.length; i++) {
+      if (fileList[i].name.toLowerCase().endsWith('.pdf')) {
+        try {
+          var buf = await readFileAsBuffer(fileList[i]);
+          var pdfDoc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+          var page = await pdfDoc.getPage(1);
+          var vp = page.getViewport({ scale: 0.5 });
+
+          var canvas = document.createElement('canvas');
+          canvas.className = 'page-canvas';
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+          var fileObj = {
+            id: 'file_' + (fileCounter++),
+            file: fileList[i],
+            canvas: canvas
+          };
+          filesArray.push(fileObj);
+          added = true;
+        } catch(e) {
+          console.error("Failed to load thumbnail for " + fileList[i].name, e);
+        }
+      }
+    }
+    if (added) {
+      actionBar.style.display = 'flex';
+      renderList();
+    } else {
+      alert('Please upload valid PDF files.');
+    }
+  }
+
+  function renderList() {
+    pdfList.innerHTML = '';
+    filesArray.forEach(function(item, index) {
+      var card = document.createElement('div');
+      card.className = 'pdf-card';
+      card.dataset.id = item.id;
+
+      var badge = document.createElement('div');
+      badge.className = 'order-badge';
+      badge.textContent = (index + 1);
+
+      var cWrap = document.createElement('div');
+      cWrap.className = 'canvas-wrap';
+      cWrap.appendChild(item.canvas);
+
+      var nameDiv = document.createElement('div');
+      nameDiv.className = 'pdf-name';
+      nameDiv.textContent = item.file.name;
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'delete-btn';
+      delBtn.innerHTML = '✕';
+      delBtn.title = 'Remove PDF';
+      delBtn.onclick = function() {
+        filesArray = filesArray.filter(function(f) { return f.id !== item.id; });
+        renderList();
+        if (filesArray.length === 0) actionBar.style.display = 'none';
+      };
+
+      card.appendChild(badge);
+      card.appendChild(cWrap);
+      card.appendChild(nameDiv);
+      card.appendChild(delBtn);
+      pdfList.appendChild(card);
+    });
+  }
+
+  new Sortable(pdfList, {
+    animation: 150,
+    ghostClass: 'dragging',
+    onEnd: function() {
+
+      var newArray = [];
+      var children = pdfList.children;
+      for (var i = 0; i < children.length; i++) {
+        var domId = children[i].dataset.id;
+        var found = filesArray.find(function(f) { return f.id === domId; });
+        if (found) newArray.push(found);
+      }
+      filesArray = newArray;
+      renderList();
+    }
+  });
+
+  pb.addEventListener('click', async function() {
+    if (filesArray.length < 2) {
+      return alert('Please add at least 2 PDF files to merge.');
+    }
+
+    pb.style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'block';
+
+    try {
+
+      var buffers = [];
+      for (var i = 0; i < filesArray.length; i++) {
+        document.getElementById('progLabel').textContent = 'Reading file ' + (i+1) + '/' + filesArray.length;
+        var buf = await readFileAsBuffer(filesArray[i].file);
+        buffers.push(buf);
+      }
+
+      document.getElementById('progLabel').textContent = 'Starting merge worker...';
+
+      var mergedBuffer = await runWorker('../../core/workers/organize/merge.worker.js', buffers, {}, function(pct, label) {
+        document.getElementById('progFill').style.width = pct + '%';
+        document.getElementById('progPct').textContent = pct + '%';
+        document.getElementById('progLabel').textContent = label;
+      });
+
+      document.getElementById('progressWrap').style.display = 'none';
+      document.getElementById('downloadWrap').style.display = 'block';
+      document.getElementById('downloadBtn').onclick = function() {
+        downloadBuffer(mergedBuffer, 'merged.pdf');
+      };
+
+    } catch(err) {
+      alert('Error: ' + err.message);
+      pb.style.display = 'block';
+      document.getElementById('progressWrap').style.display = 'none';
+    }
+  });
+</script>
+</body>
+</html>
+
+

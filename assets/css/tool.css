@@ -1,0 +1,90 @@
+
+.cp-tool-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-tool-main {
+  flex: 1;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 3rem 1.5rem 6rem;
+}
+
+.cp-tool-hero {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  animation: fadeUp 0.4s ease forwards;
+}
+
+.cp-tool-hero__icon { font-size: 3rem; margin-bottom: 1rem; }
+
+.cp-tool-hero__title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.cp-tool-hero__desc {
+  color: #94A3B8;
+  font-size: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.cp-tool-content {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 20px;
+  padding: 2rem;
+  animation: fadeUp 0.5s ease forwards;
+}
+
+.cp-file-list { margin: 1.5rem 0; }
+
+.cp-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+}
+
+.cp-file-item__name { font-size: 0.875rem; color: #F1F5F9; }
+.cp-file-item__size { font-size: 0.75rem; color: #64748B; }
+
+.cp-file-item__remove {
+  background: transparent;
+  color: #64748B;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: color 0.2s;
+}
+.cp-file-item__remove:hover { color: #EF4444; }
+
+.cp-options { margin: 1.5rem 0; padding: 1.25rem; background: rgba(255,255,255,0.02); border-radius: 12px; }
+.cp-options__title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; margin-bottom: 1rem; }
+
+.cp-process-btn {
+  width: 100%;
+  padding: 1rem;
+  background: #7C3AED;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 25px rgba(124,58,237,0.3);
+  margin-top: 1.5rem;
+}
+.cp-process-btn:hover { background: #9F67FF; transform: translateY(-1px); }
+.cp-process-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unified PDF Editor (Delete, Reorder, Rotate)</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a0a;color:#fff;font-family:monospace;font-size:13px;padding-bottom:100px;}
+    nav{border-bottom:1px solid #1a1a1a;padding:10px 20px;display:flex;gap:16px;align-items:center;background:#000;}
+    nav a{color:#aaa;text-decoration:none} nav a:hover{color:#fff}
+    .hero{padding:20px;border-bottom:1px solid #0f0f0f;background:#050505;display:flex;justify-content:space-between;align-items:center;}
+    .hero h1{font-size:20px;margin-bottom:5px}
+    .hero p{color:#666;font-size:11px}
+
+    .toolbar{display:none;gap:10px;}
+    .btn-tool{background:#111;border:1px solid #333;color:#fff;padding:8px 12px;border-radius:4px;cursor:pointer;font-family:inherit;}
+    .btn-tool:hover{background:#222}
+    .btn-tool:disabled{opacity:0.3;cursor:not-allowed}
+
+    .container{padding:20px;}
+    #dropzone{border:2px dashed #333;border-radius:6px;padding:40px;text-align:center;color:#666;cursor:pointer;background:#000;margin-bottom:20px;transition:.2s}
+    #dropzone.over{border-color:#fff;color:#fff;background:#111}
+    #fileInput{display:none}
+
+    #grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));gap:20px;margin-top:20px;}
+    .page-thumb{
+      position:relative;background:#1a1a1a;border:2px solid #333;border-radius:6px;padding:10px;
+      cursor:grab;user-select:none;transition:border .2s;display:flex;flex-direction:column;align-items:center;
+    }
+    .page-thumb.selected{border-color:#3498db;background:#0e2030;}
+    .page-thumb:hover{border-color:#555}
+    .page-thumb.selected:hover{border-color:#2980b9}
+
+    .canvas-wrap{width:100%;aspect-ratio:1/1.4;display:flex;justify-content:center;align-items:center;overflow:hidden;margin-bottom:8px;}
+    .page-thumb canvas{
+      max-width:100%;max-height:100%;display:block;border:1px solid #000;background:#fff;
+      transition:transform 0.3s ease;
+    }
+
+    .page-num{text-align:center;font-size:11px;color:#888;width:100%;margin-top:5px;}
+    .page-thumb.drag-left{border-left-color:#2ecc71;box-shadow:-6px 0 0 -2px #2ecc71;transform:translateX(4px);}
+    .page-thumb.drag-right{border-right-color:#2ecc71;box-shadow:6px 0 0 -2px #2ecc71;transform:translateX(-4px);}
+
+    .dragging{opacity:0.4;border-style:dashed;}
+
+    .action-bar{position:fixed;bottom:0;left:0;right:0;background:#050505;border-top:1px solid #1a1a1a;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;z-index:100;display:none;}
+    .btn{background:#fff;color:#000;border:none;padding:10px 20px;font-family:monospace;font-weight:bold;cursor:pointer;border-radius:3px;}
+    .btn:hover{background:#ddd}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+
+    #progressWrap{display:none;flex-grow:1;margin-right:20px;}
+    #progBar{width:100%;height:6px;background:#222;border-radius:3px;overflow:hidden;margin-top:4px}
+    #progFill{width:0%;height:100%;background:#fff;transition:width .2s}
+    #progLabel{font-size:10px;color:#888;}
+
+    #downloadWrap{display:none;}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <span style="font-weight:bold;font-size:15px">❄ ColdPDF</span>
+  <a href="../../index.html">← All Tools</a>
+  <span style="margin-left:auto;color:#444;font-size:11px">Unified Editor</span>
+</nav>
+
+<div class="hero">
+  <div>
+    <h1>Advanced PDF Editor</h1>
+    <p>Click to select pages. Drag to reorder. Use toolbar to delete or rotate selected.</p>
+  </div>
+  <div class="toolbar" id="toolbar">
+    <button class="btn-tool" id="btnSelectAll">Select All</button>
+    <button class="btn-tool" id="btnRotate" disabled>↻ Rotate Selected</button>
+    <button class="btn-tool" id="btnDelete" disabled style="color:#e74c3c;border-color:#e74c3c;">🗑 Delete Selected</button>
+  </div>
+</div>
+
+<div class="container">
+  <div id="dropzone">
+    <div style="font-size:24px;margin-bottom:10px">📄</div>
+    <span id="dzTitle">Click or drag a PDF here</span>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf">
+
+  <div id="grid"></div>
+</div>
+
+<div class="action-bar" id="actionBar">
+  <div id="progressWrap">
+    <div style="display:flex;justify-content:space-between">
+      <span id="progLabel">Processing...</span>
+      <span id="progPct" style="font-size:10px;color:#888">0%</span>
+    </div>
+    <div id="progBar"><div id="progFill"></div></div>
+  </div>
+
+  <button id="processBtn" class="btn">Apply & Save PDF</button>
+
+  <div id="downloadWrap">
+    <span style="margin-right:15px;color:#2ecc71" id="dlMsg">✅ Done!</span>
+    <button id="downloadBtn" class="btn">⬇ Download Modified PDF</button>
+  </div>
+</div>
+
+<script src="../../core/utils/file-handler.js"></script>
+<script src="../../core/utils/bridge.js"></script>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var pdfBuffer = null;
+
+  var pagesArray = []; 
+  var grid = document.getElementById('grid');
+
+  var dz = document.getElementById('dropzone'), fi = document.getElementById('fileInput');
+  var toolbar = document.getElementById('toolbar');
+  var btnSelectAll = document.getElementById('btnSelectAll');
+  var btnRotate = document.getElementById('btnRotate');
+  var btnDelete = document.getElementById('btnDelete');
+  var pb = document.getElementById('processBtn');
+
+  dz.addEventListener('click', function(){ fi.click(); });
+  dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+  dz.addEventListener('drop', function(e){
+    e.preventDefault(); dz.classList.remove('over');
+    if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fi.addEventListener('change', function(){
+    if(fi.files.length) handleFile(fi.files[0]);
+  });
+
+  async function handleFile(f) {
+    if (!f.name.toLowerCase().endsWith('.pdf')) return alert('Please upload a PDF file.');
+    dz.style.display = 'none';
+    grid.innerHTML = '<div style="color:#888">Rendering PDF pages... Please wait...</div>';
+
+    try {
+      pdfBuffer = await readFileAsBuffer(f);
+      var pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer.slice(0) }).promise;
+      pagesArray = [];
+
+      for (var i = 1; i <= pdfDoc.numPages; i++) {
+        var page = await pdfDoc.getPage(i);
+        var vp = page.getViewport({ scale: 0.5 });
+        var canvas = document.createElement('canvas');
+        canvas.width = vp.width; canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+        pagesArray.push({
+          id: 'p' + i,
+          originalIndex: i - 1,
+          rotation: 0,
+          canvas: canvas,
+          selected: false
+        });
+      }
+
+      document.getElementById('actionBar').style.display = 'flex';
+      toolbar.style.display = 'flex';
+      renderGrid();
+    } catch(err) {
+      alert('Error reading PDF: ' + err.message);
+      dz.style.display = 'block';
+      grid.innerHTML = '';
+    }
+  }
+
+  function updateToolbar() {
+    var hasSelection = pagesArray.some(function(p){ return p.selected; });
+    btnRotate.disabled = !hasSelection;
+    btnDelete.disabled = !hasSelection;
+    var allSelected = pagesArray.length > 0 && pagesArray.every(function(p){ return p.selected; });
+    btnSelectAll.textContent = allSelected ? 'Deselect All' : 'Select All';
+  }
+
+  btnSelectAll.onclick = function() {
+    var allSelected = pagesArray.length > 0 && pagesArray.every(function(p){ return p.selected; });
+    pagesArray.forEach(function(p){ p.selected = !allSelected; });
+    renderGrid();
+  };
+
+  btnRotate.onclick = function() {
+    pagesArray.forEach(function(p) {
+      if (p.selected) p.rotation = (p.rotation + 90) % 360;
+    });
+    renderGrid();
+  };
+
+  btnDelete.onclick = function() {
+    pagesArray = pagesArray.filter(function(p){ return !p.selected; });
+    renderGrid();
+  };
+
+  function renderGrid() {
+    grid.innerHTML = '';
+    updateToolbar();
+
+    pagesArray.forEach(function(p, index) {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'page-thumb' + (p.selected ? ' selected' : '');
+      wrapper.draggable = true;
+      wrapper.dataset.index = index;
+
+      var cWrap = document.createElement('div');
+      cWrap.className = 'canvas-wrap';
+      p.canvas.style.transform = 'rotate(' + p.rotation + 'deg)';
+
+      if (p.rotation === 90 || p.rotation === 270) {
+        var scale = Math.min(1, p.canvas.width / p.canvas.height);
+        p.canvas.style.transform += ' scale(' + scale + ')';
+      }
+      cWrap.appendChild(p.canvas);
+
+      var label = document.createElement('div');
+      label.className = 'page-num';
+      label.innerHTML = '<strong style="color:#fff;font-size:12px;">Page ' + (index + 1) + '</strong><br>Original: ' + (p.originalIndex + 1);
+
+      wrapper.appendChild(cWrap);
+      wrapper.appendChild(label);
+      grid.appendChild(wrapper);
+
+      wrapper.addEventListener('click', function(e) {
+        p.selected = !p.selected;
+        renderGrid();
+      });
+
+    });
+
+    if (!window.sortableInst) {
+      window.sortableInst = new Sortable(grid, {
+        animation: 150,
+        ghostClass: 'dragging',
+        onEnd: function() {
+          var newArray = [];
+          var children = grid.children;
+          for (var i = 0; i < children.length; i++) {
+            var oldIdx = parseInt(children[i].dataset.index);
+            newArray.push(pagesArray[oldIdx]);
+          }
+          pagesArray = newArray;
+          renderGrid();
+        }
+      });
+    }
+  }
+
+  pb.addEventListener('click', function() {
+    if (pagesArray.length === 0) return alert('No pages remaining to save.');
+
+    var statePayload = pagesArray.map(function(p) {
+      return { originalIndex: p.originalIndex, rotation: p.rotation };
+    });
+
+    pb.style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'block';
+
+    runWorker('../../core/workers/edit/visual-editor.worker.js', [pdfBuffer], { pageState: statePayload }, function(pct, label) {
+      document.getElementById('progFill').style.width = pct + '%';
+      document.getElementById('progPct').textContent = pct + '%';
+      document.getElementById('progLabel').textContent = label;
+    })
+    .then(function(result) {
+      document.getElementById('progressWrap').style.display = 'none';
+      document.getElementById('downloadWrap').style.display = 'block';
+      document.getElementById('downloadBtn').onclick = function() {
+        downloadBuffer(result, 'modified.pdf');
+      };
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+      pb.style.display = 'block';
+      document.getElementById('progressWrap').style.display = 'none';
+    });
+  });
+</script>
+</body>
+</html>
+
+
