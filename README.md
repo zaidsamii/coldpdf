@@ -1,46 +1,75 @@
-# ColdPDF
+<div align="center">
+  <h1>🧊 ColdPDF</h1>
+  <p><strong>A zero-server, privacy-first PDF toolkit that runs entirely in your browser.</strong></p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/version-1.0-blue.svg" alt="Version 1.0" />
+    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License MIT" />
+    <img src="https://img.shields.io/badge/platform-Web-lightgrey.svg" alt="Platform Web" />
+  </p>
+</div>
 
-ColdPDF is a lightweight, fully client-side toolkit for working with PDF files directly in the browser. 
-There is no backend server involved, meaning your documents never leave your local machine, ensuring complete privacy.
+---
 
-All heavy lifting is done locally using Web Workers to prevent UI freezing.
+## 📌 Overview
 
-## Features
+**ColdPDF** is a lightweight toolkit designed for editing, organizing, and converting PDF files directly on the client side. I built this tool to solve a common problem: most free online PDF editors force you to upload your sensitive documents to their servers. 
 
-- **Organize**: Merge multiple PDFs, split ranges, reorder/delete pages via drag-and-drop, and rotate pages.
-- **Images**: Convert PDF pages to JPG/PNG, create PDFs from images, or extract all embedded images.
-- **Edit**: Interactive drawing on PDFs (pen, marker, highlighter), OCR for text extraction, and form filling.
-- **Optimize**: Compress files for smaller sizes and repair corrupted PDFs.
-- **Security**: Add/remove passwords, apply text watermarks, redact sensitive areas, and sign documents.
-- **Conversions**: Convert to/from Markdown, HTML, DOCX, and PPTX natively in the browser.
+With ColdPDF, **your files never leave your machine**. Everything is processed locally in your browser's memory using Web Workers, ensuring absolute data privacy and blazing-fast performance.
 
-## Getting Started
+## 🚀 Key Features
 
-Because ColdPDF has no build tools or server dependencies, you can start running it instantly:
+### 📂 Organize & Manipulate
+- **Merge & Split:** Combine multiple PDFs into one, or extract specific pages.
+- **Visual Reorder:** Drag-and-drop interface to rearrange or delete pages instantly.
+- **Rotate:** Adjust page orientations individually.
 
-1. Clone the repository:
+### ✏️ Edit & Annotate
+- **Interactive Marking:** Draw directly on pages using various brush types (Pen, Marker, Highlighter).
+- **Watermarking:** Stamp text across pages for copyright protection.
+- **Redaction:** Black out sensitive information permanently.
+
+### 🖼️ Convert & Optimize
+- **Images:** Convert PDF pages to JPG/PNG, or compile images into a single PDF.
+- **Compression:** Reduce file size for easier sharing without heavy quality loss.
+- **Text Extraction:** Pull plain text or use OCR for scanned documents.
+- **Format Conversion:** Convert to Markdown, HTML, and other office formats.
+
+### 🔒 Security
+- **Protect/Unlock:** Add password encryption or decrypt locked files.
+- **Signatures:** Add digital signature stamps to documents.
+
+## 🛠️ Technical Architecture
+
+This project was built from scratch using vanilla web technologies to maintain maximum control over performance and dependencies.
+
+- **Core PDF Engine:** [pdf-lib](https://pdf-lib.js.org/) for heavy document manipulation.
+- **Rendering Layer:** [PDF.js](https://mozilla.github.io/pdf.js/) for generating visual page previews.
+- **Concurrency:** Extensive use of **Web Workers** ensures that heavy PDF processing (like OCR or compression) runs on background threads, keeping the main UI completely responsive.
+- **UI & Interactions:** Vanilla JavaScript and CSS. [SortableJS](https://sortablejs.github.io/Sortable/) is used for smooth drag-and-drop mechanics.
+
+## 💻 Getting Started
+
+Since ColdPDF relies entirely on client-side processing, there are no complex backends to configure.
+
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/zaidsamii/coldpdf.git
-   cd coldpdf
    ```
 
-2. Start a local HTTP server (needed to load Web Workers properly due to CORS):
+2. **Serve locally:**
+   Because Web Workers require a local server to bypass CORS restrictions, you can serve the directory using any basic HTTP server:
    ```bash
+   # If you have Python installed:
    python -m http.server 8000
-   # or with Node.js
+   
+   # Or using Node.js:
    npx serve .
    ```
 
-3. Open `http://localhost:8000` in your web browser.
+3. **Open:** Navigate to `http://localhost:8000` in your browser.
 
-## Tech Stack
+## 📄 License
 
-ColdPDF is built with a focus on simplicity and zero dependencies:
-- **Core Engine:** [pdf-lib](https://pdf-lib.js.org/) for PDF manipulation
-- **Rendering:** [PDF.js](https://mozilla.github.io/pdf.js/) for visualizing pages
-- **Drag & Drop:** [SortableJS](https://sortablejs.github.io/Sortable/) for organizing pages
-- **Architecture:** Pure Vanilla JavaScript, HTML5, and CSS3 with Web Workers for background processing.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is open-source and available under the [MIT License](LICENSE). 
+Copyright (c) 2026 Zaid Sami.
